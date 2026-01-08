@@ -50,6 +50,14 @@ export const createUser = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Set HTTP-only cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
     res.status(201).json({
       success: true,
       message: "User created successfully",
@@ -58,8 +66,7 @@ export const createUser = async (req, res) => {
           id: user._id,
           email: user.email,
           credits: user.credits
-        },
-        token
+        }
       }
     });
   } catch (error) {
@@ -103,6 +110,14 @@ export const loginUser = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Set HTTP-only cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -111,8 +126,7 @@ export const loginUser = async (req, res) => {
           id: user._id,
           email: user.email,
           credits: user.credits
-        },
-        token
+        }
       }
     });
   } catch (error) {
@@ -121,6 +135,68 @@ export const loginUser = async (req, res) => {
       success: false,
       message: "Error logging in",
       error: error.message
+    });
+  }
+};
+
+export const logoutUser = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax"
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Logout successful"
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error logging out",
+      error: error.message
+    });
+  }
+};
+
+export const getCurrentUser = async (req, res) => {
+  try {
+    const token = req.cookies.token;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated"
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select("-password");
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          credits: user.credits
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(401).json({
+      success: false,
+      message: "Invalid token"
     });
   }
 };
