@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Card } from "@/components/ui/Card";
@@ -16,13 +17,25 @@ export default function DashboardPage() {
   const {
     prompt,
     style,
+    duration,
+    aspectRatio,
     isGenerating,
     currentVideoUrl,
+    currentStatus,
     library,
+    error,
     setPrompt,
     setStyle,
-    generateVideo
+    setDuration,
+    setAspectRatio,
+    generateVideo,
+    loadLibrary
   } = useVideoStore();
+
+  // Load library on mount
+  useEffect(() => {
+    loadLibrary();
+  }, [loadLibrary]);
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl gap-4 px-4 py-6 sm:px-6 lg:px-8">
@@ -67,30 +80,68 @@ export default function DashboardPage() {
                   Prompt
                 </label>
                 <textarea
-                  className="min-h-[120px] w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500 focus:border-sky-400 focus:ring-2 focus:ring-sky-500/70"
+                  className="min-h-[120px] w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500 focus:border-sky-400 focus:ring-2 focus:ring-sky-500/70 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Example: 8 second vertical intro of a product unboxing with bold typography and upbeat lo-fi track."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  disabled={isGenerating}
                 />
               </div>
 
-              <div className="w-full space-y-3 sm:w-52">
-                <label className="text-xs font-medium text-slate-300">
-                  Style
-                </label>
-                <select
-                  className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 text-xs text-slate-100 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/70"
-                  value={style}
-                  onChange={(e) =>
-                    setStyle(e.target.value as typeof style)
-                  }
-                >
-                  <option value="fun">Fun • punchy & animated</option>
-                  <option value="calm">Calm • minimal & slow</option>
-                  <option value="background">
-                    Background • subtle loops
-                  </option>
-                </select>
+              <div className="w-full space-y-3 sm:w-64">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-300">
+                    Style
+                  </label>
+                  <select
+                    className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 text-xs text-slate-100 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/70"
+                    value={style}
+                    onChange={(e) =>
+                      setStyle(e.target.value as typeof style)
+                    }
+                    disabled={isGenerating}
+                  >
+                    <option value="fun">Fun • punchy & animated</option>
+                    <option value="calm">Calm • minimal & slow</option>
+                    <option value="background">
+                      Background • subtle loops
+                    </option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-300">
+                    Duration (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                    disabled={isGenerating}
+                    className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 text-xs text-slate-100 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/70"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-300">
+                    Aspect Ratio
+                  </label>
+                  <select
+                    className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 text-xs text-slate-100 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/70"
+                    value={aspectRatio}
+                    onChange={(e) =>
+                      setAspectRatio(e.target.value as typeof aspectRatio)
+                    }
+                    disabled={isGenerating}
+                  >
+                    <option value="16:9">16:9 • Widescreen</option>
+                    <option value="9:16">9:16 • Vertical</option>
+                    <option value="1:1">1:1 • Square</option>
+                    <option value="4:3">4:3 • Classic</option>
+                  </select>
+                </div>
 
                 <div className="space-y-1 rounded-lg border border-dashed border-slate-800/80 bg-slate-900/50 p-3 text-[11px] text-slate-400">
                   <p className="font-medium text-slate-300">
@@ -106,10 +157,37 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {error && (
+              <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-400">
+                {error}
+              </div>
+            )}
+
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span>Mock generation • credits are not consumed</span>
+                {currentStatus && (
+                  <>
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        currentStatus === "completed"
+                          ? "bg-emerald-400"
+                          : currentStatus === "failed"
+                            ? "bg-rose-400"
+                            : "bg-sky-400 animate-pulse"
+                      }`}
+                    />
+                    <span className="capitalize">
+                      Status: {currentStatus}
+                      {currentStatus === "processing" && "..."}
+                    </span>
+                  </>
+                )}
+                {!currentStatus && (
+                  <>
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    <span>Ready to generate</span>
+                  </>
+                )}
               </div>
 
               <Button
@@ -117,24 +195,40 @@ export default function DashboardPage() {
                 disabled={isGenerating || !prompt.trim()}
                 className="text-xs"
               >
-                {isGenerating ? "Generating..." : "Generate video"}
+                {isGenerating
+                  ? currentStatus === "queued"
+                    ? "Queued..."
+                    : currentStatus === "processing"
+                      ? "Processing..."
+                      : "Generating..."
+                  : "Generate video"}
               </Button>
             </div>
 
-            <VideoPreview isLoading={isGenerating} src={currentVideoUrl} />
+            <VideoPreview
+              isLoading={isGenerating && currentStatus !== "completed"}
+              src={currentVideoUrl}
+              status={currentStatus}
+            />
 
             <div className="mt-4 flex items-center justify-between gap-3">
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!currentVideoUrl}
-                className="text-[11px] opacity-70"
+                disabled={!currentVideoUrl || currentStatus !== "completed"}
+                className="text-[11px]"
+                onClick={() => {
+                  if (currentVideoUrl) {
+                    window.open(currentVideoUrl, "_blank");
+                  }
+                }}
               >
-                Download (coming soon)
+                {currentVideoUrl ? "View Video" : "Download (coming soon)"}
               </Button>
               <p className="text-[11px] text-slate-500">
-                Export, brand kit, and timeline editing will be wired once the
-                generation API is live.
+                {currentStatus === "completed"
+                  ? "Video generation complete. Click to view."
+                  : "Export, brand kit, and timeline editing will be wired once the generation API is live."}
               </p>
             </div>
           </Card>
@@ -168,16 +262,36 @@ function LibraryView({
                   {video.prompt}
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  {video.style} • {video.createdAt}
+                  {video.style} • {video.duration}s • {video.aspectRatio} •{" "}
+                  {new Date(video.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
                 </p>
+                {video.status === "failed" && video.errorMessage && (
+                  <p className="text-[11px] text-rose-400">
+                    {video.errorMessage}
+                  </p>
+                )}
               </div>
               <Button
                 size="sm"
                 variant="outline"
-                className="text-[11px] opacity-80"
-                disabled
+                className="text-[11px]"
+                disabled={!video.url || video.status !== "completed"}
+                onClick={() => {
+                  if (video.url) {
+                    window.open(video.url, "_blank");
+                  }
+                }}
               >
-                Open (soon)
+                {video.status === "completed" && video.url
+                  ? "View"
+                  : video.status === "failed"
+                    ? "Failed"
+                    : "Processing"}
               </Button>
             </div>
           ))}

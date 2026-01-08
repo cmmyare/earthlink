@@ -101,6 +101,61 @@ class ApiClient {
 
     throw new Error(response.message || "Failed to get user");
   }
+
+  async generateVideo(payload: {
+    prompt: string;
+    style: string;
+    duration: number;
+    aspectRatio: string;
+  }): Promise<{ jobId: string; status: string }> {
+    const response = await this.request<{ jobId: string; status: string }>(
+      "/videos/generate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    );
+
+    if (response.data) {
+      return response.data;
+    }
+
+    throw new Error(response.message || "Failed to generate video");
+  }
+
+  async getVideoJobStatus(jobId: string): Promise<{
+    jobId: string;
+    status: string;
+    videoUrl: string | null;
+    errorMessage: string | null;
+    prompt: string;
+    style: string;
+    duration: number;
+    aspectRatio: string;
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    const response = await this.request<{
+      jobId: string;
+      status: string;
+      videoUrl: string | null;
+      errorMessage: string | null;
+      prompt: string;
+      style: string;
+      duration: number;
+      aspectRatio: string;
+      createdAt: string;
+      updatedAt: string;
+    }>(`/videos/${jobId}`, {
+      method: "GET"
+    });
+
+    if (response.data) {
+      return response.data;
+    }
+
+    throw new Error(response.message || "Failed to get video job status");
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

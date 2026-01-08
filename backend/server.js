@@ -4,6 +4,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/database.js";
 import userRoutes from "./routes/userRoutes.js";
+import videoRoutes from "./routes/videoRoutes.js";
+import videoWorker from "./workers/videoWorker.js";
 
 // Load environment variables
 dotenv.config();
@@ -36,6 +38,7 @@ app.get("/api/health", (req, res) => {
 
 // Routes
 app.use("/api/users", userRoutes);
+app.use("/api/videos", videoRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -58,4 +61,23 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  
+  // Start video worker after server starts
+  // Wait a bit for database connection to be established
+  setTimeout(() => {
+    videoWorker.start();
+  }, 2000);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully...");
+  videoWorker.stop();
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down gracefully...");
+  videoWorker.stop();
+  process.exit(0);
 });
